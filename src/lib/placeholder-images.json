@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-1",
+      "description": "A professional and modern workspace with a laptop open.",
+      "imageUrl": "https://images.unsplash.com/photo-1722159475082-0a2331580de3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjB3b3Jrc3BhY2V8ZW58MHx8fHwxNzYxMzU1NzM5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "professional workspace"
+    },
+    {
+      "id": "feature-1",
+      "description": "A close-up of a printed resume document.",
+      "imageUrl": "https://images.unsplash.com/photo-1693045181178-d5d83fb070c8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxyZXN1bWUlMjBkb2N1bWVudHxlbnwwfHx8fDE3NjEzNjY2OTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resume document"
+    },
+    {
+      "id": "feature-2",
+      "description": "A person smiling confidently, suggesting career success.",
+      "imageUrl": "https://images.unsplash.com/photo-1607529378676-a20456ee2f6b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxwZXJzb24lMjBzbWlsaW5nfGVufDB8fHx8MTc2MTI5NTU5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person smiling"
+    }
+  ]
 }
