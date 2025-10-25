@@ -130,7 +130,7 @@ export function ResumeBuilder() {
       toast({ title: 'Resume Generated!', description: 'Your new resume is ready for editing.' });
       router.push(`/build?resumeId=${newDocRef.id}`);
 
-    } catch (error) => {
+    } catch (error) {
       console.error(error);
       toast({ title: 'Generation Failed', description: 'Could not generate resume. Please try again.', variant: 'destructive' });
       setStep('prompt');
