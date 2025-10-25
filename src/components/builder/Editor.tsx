@@ -7,12 +7,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Trash2, PlusCircle, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, GripVertical, Save } from 'lucide-react';
 import type { Resume } from '@/lib/types';
 import AtsAnalyzer from './AtsAnalyzer';
 
-export default function Editor() {
-  const { register, control, formState: { errors } } = useFormContext<Resume>();
+interface EditorProps {
+    onSave: () => void;
+}
+
+export default function Editor({ onSave }: EditorProps) {
+  const { register, control, formState: { errors, isDirty } } = useFormContext<Resume>();
 
   const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
     control,
@@ -35,9 +39,15 @@ export default function Editor() {
   
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-headline text-3xl font-bold">Resume Editor</h1>
-        <p className="text-muted-foreground">Fine-tune your resume here. Changes will be reflected in the live preview.</p>
+      <div className='flex justify-between items-center'>
+        <div>
+            <h1 className="font-headline text-3xl font-bold">Resume Editor</h1>
+            <p className="text-muted-foreground">Fine-tune your resume here. Changes will be reflected in the live preview.</p>
+        </div>
+        <Button onClick={onSave} disabled={!isDirty}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Changes
+        </Button>
       </div>
 
        <div className="flex gap-2">

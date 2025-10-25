@@ -1,10 +1,14 @@
-"use client";
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -17,6 +21,7 @@ import Editor from './Editor';
 import Preview from './Preview';
 
 const resumeSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
@@ -61,39 +66,101 @@ export function ResumeBuilder() {
   const [step, setStep] = useState<'prompt' | 'generating' | 'editing'>('prompt');
   const [prompt, setPrompt] = useState('');
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const resumeId = searchParams.get('resumeId');
 
-  const methods = useForm<Resume>({
+  const methods = useForm<Resume & { id?: string }>({
     resolver: zodResolver(resumeSchema),
     defaultValues: defaultResume,
   });
+
+  const resumeRef = useMemoFirebase(() => {
+    if (!user || !firestore || !resumeId) return null;
+    return doc(firestore, `users/${user.uid}/resumes`, resumeId);
+  }, [firestore, user, resumeId]);
+
+  const { data: resumeData, isLoading: isResumeLoading } = useDoc(resumeRef);
+
+  useEffect(() => {
+    if (resumeData) {
+      methods.reset(resumeData as Resume);
+      setStep('editing');
+    }
+  }, [resumeData, methods]);
+  
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+        router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const handleGenerate = async () => {
     if (!prompt) {
       toast({ title: 'Prompt is empty', description: 'Please provide some details about yourself.', variant: 'destructive' });
       return;
     }
+    if (!user || !firestore) {
+      toast({ title: 'Authentication Error', description: 'You must be logged in to create a resume.', variant: 'destructive' });
+      return;
+    }
+
     setStep('generating');
     try {
-      const { resume } = await generateResumeFromPrompt({ prompt });
-      const parsedResume = parseResumeText(resume);
+      const { resume: generatedResumeText } = await generateResumeFromPrompt({ prompt });
+      const parsedResume = parseResumeText(generatedResumeText);
       
-      const fullResumeData = {
+      const fullResumeData: Resume & { createdAt: any, updatedAt: any, userId: string, title: string } = {
         ...defaultResume,
         ...parsedResume,
+        userId: user.uid,
+        title: `${parsedResume.name || 'Untitled'}'s Resume`,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
+      
+      const resumesCol = collection(firestore, `users/${user.uid}/resumes`);
+      const newDocRef = await addDocumentNonBlocking(resumesCol, fullResumeData);
 
-      methods.reset(fullResumeData);
+      methods.reset({ ...fullResumeData, id: newDocRef.id });
+
       setStep('editing');
       toast({ title: 'Resume Generated!', description: 'Your new resume is ready for editing.' });
+      router.push(`/build?resumeId=${newDocRef.id}`);
 
-    } catch (error) {
+    } catch (error) => {
       console.error(error);
       toast({ title: 'Generation Failed', description: 'Could not generate resume. Please try again.', variant: 'destructive' });
       setStep('prompt');
     }
   };
 
-  if (step === 'prompt' || step === 'generating') {
+  const handleSave = () => {
+    if (!user || !firestore || !methods.getValues('id')) return;
+    
+    const currentResumeData = methods.getValues();
+    const docRef = doc(firestore, `users/${user.uid}/resumes`, currentResumeData.id!);
+
+    setDocumentNonBlocking(docRef, {
+      ...currentResumeData,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    toast({ title: "Resume Saved", description: "Your changes have been saved." });
+  };
+
+
+  if (isUserLoading || isResumeLoading) {
+     return (
+       <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+       </div>
+     )
+  }
+  
+  if (!resumeId && step !== 'editing') {
     return (
       <div className="flex h-full items-center justify-center bg-secondary/50">
         <Card className="w-full max-w-2xl shadow-xl">
@@ -133,7 +200,7 @@ export function ResumeBuilder() {
     <FormProvider {...methods}>
       <div className="grid h-full grid-cols-1 md:grid-cols-2">
         <div className="h-full overflow-y-auto bg-card p-4 sm:p-6 lg:p-8">
-          <Editor />
+          <Editor onSave={handleSave} />
         </div>
         <div className="hidden h-full overflow-y-auto bg-secondary/30 p-8 md:block">
           <Preview />
