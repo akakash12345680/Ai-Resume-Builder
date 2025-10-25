@@ -31,6 +31,8 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateResumeFromPromptOutputSchema},
   prompt: `You are an expert resume writer. You will generate a complete resume based on the user's prompt. The resume should include the following sections: Summary, Skills, Experience, Education, and Projects. The resume should be ATS optimized with action verbs and keywords.
 
+Ensure the output is a valid JSON object that matches the following schema: { "resume": "..." }.
+
 Prompt: {{{prompt}}}
 
 Resume:`,
