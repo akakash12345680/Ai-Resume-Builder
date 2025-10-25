@@ -1,0 +1,94 @@
+/**
+ * @fileoverview Firestore Security Rules for ResumeAI application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user can only
+ * access their own user document and the resumes they have created.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information.
+ * - /users/{userId}/resumes/{resumeId}: Stores resumes created by a specific user.
+ *
+ * Key Security Decisions:
+ * - Users can only create, read, update, and delete their own user document.
+ * - Users can only create, read, update, and delete resumes under their own user document.
+ * - Listing all users is disallowed.
+ *
+ * Denormalization for Authorization:
+ * The `Resume` entity requires the `userId` field to be stored in the document.
+ * This allows us to enforce ownership without needing to perform additional `get()` calls.
+ *
+ * Structural Segregation:
+ * Private user data and resumes are stored under the /users/{userId} path.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile information.
+     * @path /users/{userId}
+     * @allow (create) - Allow user to create their own profile if the userId matches their auth.uid.
+     * @allow (get) - Allow user to read their own profile.
+     * @allow (update) - Allow user to update their own profile.
+     * @allow (delete) - Allow user to delete their own profile.
+     * @deny (create) - Deny user from creating a profile with a userId that does not match their auth.uid.
+     * @deny (get) - Deny user from reading another user's profile.
+     * @deny (update) - Deny user from updating another user's profile.
+     * @deny (delete) - Deny user from deleting another user's profile.
+     * @principle Enforces document ownership for all operations on user profiles.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing all users is disallowed.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to resumes created by a specific user.
+     * @path /users/{userId}/resumes/{resumeId}
+     * @allow (create) - Allow user to create a resume under their own user document if the userId matches their auth.uid.
+     * @allow (get) - Allow user to read their own resumes.
+     * @allow (update) - Allow user to update their own resumes.
+     * @allow (delete) - Allow user to delete their own resumes.
+     * @deny (create) - Deny user from creating a resume with a userId that does not match their auth.uid.
+     * @deny (get) - Deny user from reading another user's resumes.
+     * @deny (update) - Deny user from updating another user's resumes.
+     * @deny (delete) - Deny user from deleting another user's resumes.
+     * @principle Enforces document ownership for all operations on resumes.
+     */
+    match /users/{userId}/resumes/{resumeId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
