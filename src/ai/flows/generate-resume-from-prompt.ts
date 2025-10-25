@@ -5,7 +5,7 @@
  *
  * - generateResumeFromPrompt - A function that generates a resume from a prompt.
  * - GenerateResumeFromPromptInput - The input type for the generateResumeFromPrompt function.
- * - GenerateResumeFromPromptOutput - The return type for the generateResumeFromPrompt function.
+ * - GenerateResumeFromPromptOutput - The return type for the generateResumeFromprompt function.
  */
 
 import {ai} from '@/ai/genkit';
