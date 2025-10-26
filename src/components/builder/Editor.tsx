@@ -45,29 +45,35 @@ export default function Editor({ onSave }: EditorProps) {
         return;
     }
     
-    // The library renders the canvas at a resolution of 96 dpi.
-    // We can scale it up to improve the quality of the PDF.
     const canvas = await html2canvas(resumePreviewElement, {
-        scale: 4, // Increase scale for much better quality
-        useCORS: true, 
+        scale: 4, 
+        useCORS: true,
+        // Set width and height to match the element's scroll dimensions to capture full content
+        width: resumePreviewElement.scrollWidth,
+        height: resumePreviewElement.scrollHeight,
     });
 
     const pdf = new jsPDF({
         orientation: 'p',
-        unit: 'px',
+        unit: 'pt', // Use points for standard PDF sizing
         format: 'a4',
-        hotfixes: ['px_scaling'], // crucial for correct scaling
     });
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     
-    // Scale canvas to fit PDF width
-    const ratio = pdfWidth / canvasWidth;
-    const scaledHeight = canvasHeight * ratio;
+    // Maintain aspect ratio
+    const ratio = Math.min(pdfWidth / canvasWidth, pdfHeight / canvasHeight);
+    const imgWidth = canvasWidth * ratio;
+    const imgHeight = canvasHeight * ratio;
+    
+    // Center the image on the page (optional)
+    const x = (pdfWidth - imgWidth) / 2;
+    const y = 0; // Align to top
 
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, scaledHeight);
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWidth, imgHeight);
     pdf.save("resume.pdf");
   };
   
@@ -266,5 +272,3 @@ export default function Editor({ onSave }: EditorProps) {
     </div>
   );
 }
-
-    
