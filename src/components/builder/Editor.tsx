@@ -99,28 +99,36 @@ export default function Editor({ onSave }: EditorProps) {
     switch(selectedTemplate) {
         case 'creative':
             const sidebarWidth = pageWidth * 0.33;
-            const contentWidth = pageWidth - sidebarWidth - margin * 2;
+            const contentWidth = pageWidth - sidebarWidth - margin;
             const sidebarX = 0;
-            const contentX = sidebarWidth + margin;
+            const contentX = sidebarWidth + margin / 2;
             
-            let ySidebar = 0;
-            let yContent = 0;
+            let ySidebar = margin;
+            let yContent = margin;
 
-            // --- Sidebar ---
+            const newPage = () => {
+              doc.addPage();
+              doc.setFillColor(47, 62, 80); // bg-slate-800
+              doc.rect(sidebarX, 0, sidebarWidth, pageHeight, 'F');
+              ySidebar = margin;
+              yContent = margin;
+            };
+            
+            // --- Initial Page Setup ---
             doc.setFillColor(47, 62, 80); // bg-slate-800
             doc.rect(sidebarX, 0, sidebarWidth, pageHeight, 'F');
-            
-            ySidebar = margin + 80;
+
+            // --- Sidebar Content ---
             
             // Name
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor('#FFFFFF');
             const nameLines = doc.splitTextToSize(resume.name || "Your Name", sidebarWidth - 20);
-            doc.text(nameLines, sidebarWidth / 2, margin + 40, { align: 'center' });
+            doc.text(nameLines, sidebarWidth / 2, ySidebar, { align: 'center' });
+            ySidebar += doc.getTextDimensions(nameLines).h + 10;
 
             // Line
-            ySidebar = margin + 50 + doc.getTextDimensions(nameLines).h;
             doc.setDrawColor(71, 85, 105); // bg-slate-600
             doc.setLineWidth(1);
             doc.line(sidebarX + 15, ySidebar, sidebarWidth - 15, ySidebar);
@@ -168,30 +176,30 @@ export default function Editor({ onSave }: EditorProps) {
               const chipPadding = 5;
               const chipMargin = 3;
               let currentX = 15;
+              const chipHeight = 12;
 
               skills.forEach(skill => {
                   const skillWidth = doc.getTextDimensions(skill).w + chipPadding * 2;
                   if (currentX + skillWidth > sidebarWidth - 15) {
                       currentX = 15;
-                      ySidebar += 14;
+                      ySidebar += chipHeight + chipMargin + 2; // Move to next line
                   }
-                  doc.setFillColor(30, 41, 59);
-                  doc.roundedRect(currentX, ySidebar - 9, skillWidth, 12, 2, 2, 'F');
-                  doc.text(skill, currentX + chipPadding, ySidebar);
+                   if (ySidebar > pageHeight - margin){
+                      // Skills section is too long, we don't handle this yet
+                      // but this check prevents it from drawing off page
+                      return;
+                  }
+                  doc.setFillColor(30, 41, 59); // bg-slate-900
+                  doc.roundedRect(currentX, ySidebar, skillWidth, chipHeight, 2, 2, 'F');
+                  doc.text(skill, currentX + chipPadding, ySidebar + (chipHeight / 2) + 3, {baseline: 'middle'});
                   currentX += skillWidth + chipMargin;
               });
              }
 
             // --- Main Content ---
-            yContent = margin;
-
             const addContentSection = (title: string, contentFn: () => void) => {
-              if (yContent > pageHeight - margin - 50) { 
-                doc.addPage();
-                // Redraw sidebar on new page
-                doc.setFillColor(47, 62, 80);
-                doc.rect(sidebarX, 0, sidebarWidth, pageHeight, 'F');
-                yContent = margin;
+              if (yContent + 25 > pageHeight - margin) { // Check before title
+                newPage();
               }
               doc.setFontSize(14);
               doc.setFont('helvetica', 'bold');
@@ -203,7 +211,7 @@ export default function Editor({ onSave }: EditorProps) {
               doc.line(contentX, yContent, pageWidth - margin, yContent);
               yContent += 15;
               contentFn();
-              yContent += 15;
+              yContent += 15; // Space after section
             };
 
             // Summary
@@ -212,7 +220,10 @@ export default function Editor({ onSave }: EditorProps) {
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'italic');
                 doc.setTextColor(71, 85, 105); // text-slate-600
-                const summaryLines = doc.splitTextToSize(resume.summary, contentWidth);
+                const summaryLines = doc.splitTextToSize(resume.summary, contentWidth - margin);
+                if (yContent + doc.getTextDimensions(summaryLines).h > pageHeight - margin) {
+                    newPage();
+                }
                 doc.text(summaryLines, contentX, yContent);
                 yContent += doc.getTextDimensions(summaryLines).h;
               });
@@ -222,18 +233,20 @@ export default function Editor({ onSave }: EditorProps) {
             if (resume.experience?.length) {
               addContentSection('Experience', () => {
                 resume.experience.forEach(exp => {
+                  if (yContent + 40 > pageHeight - margin) { newPage(); } // rough check
+
                   doc.setFontSize(11);
                   doc.setFont('helvetica', 'bold');
                   doc.setTextColor(30, 41, 59); // text-slate-800
                   doc.text(exp.role, contentX, yContent);
                   
-                  const dateWidth = doc.getTextDimensions(exp.date).w;
                   doc.setFontSize(9);
                   doc.setFont('helvetica', 'normal');
                   doc.setTextColor(100, 116, 139); // text-slate-500
                   doc.text(exp.date, pageWidth - margin, yContent, {align: 'right'});
                   yContent += 12;
 
+                  if (yContent > pageHeight - margin) { newPage(); }
                   doc.setFontSize(10);
                   doc.setFont('helvetica', 'normal');
                   doc.setTextColor(71, 85, 105); // text-slate-600
@@ -246,13 +259,10 @@ export default function Editor({ onSave }: EditorProps) {
                       doc.setTextColor(51, 65, 85); // text-slate-700
                       const bulletPoint = '\u2022';
                       const pointText = line.replace(/^- /, '').trim();
-                      const pointLines = doc.splitTextToSize(pointText, contentWidth - 10);
+                      const pointLines = doc.splitTextToSize(pointText, contentWidth - margin - 10);
                       
                       if (yContent + doc.getTextDimensions(pointLines).h > pageHeight - margin) {
-                          doc.addPage();
-                          doc.setFillColor(47, 62, 80);
-                          doc.rect(sidebarX, 0, sidebarWidth, pageHeight, 'F');
-                          yContent = margin;
+                          newPage();
                       }
 
                       doc.text(bulletPoint, contentX, yContent);
@@ -268,6 +278,7 @@ export default function Editor({ onSave }: EditorProps) {
             if (resume.projects?.length) {
                 addContentSection('Projects', () => {
                     resume.projects.forEach(proj => {
+                        if (yContent + 25 > pageHeight - margin) { newPage(); }
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'bold');
                         doc.setTextColor(30, 41, 59);
@@ -277,7 +288,8 @@ export default function Editor({ onSave }: EditorProps) {
                         doc.setFontSize(9.5);
                         doc.setFont('helvetica', 'normal');
                         doc.setTextColor(51, 65, 85);
-                        const descLines = doc.splitTextToSize(proj.description, contentWidth);
+                        const descLines = doc.splitTextToSize(proj.description, contentWidth - margin);
+                         if (yContent + doc.getTextDimensions(descLines).h > pageHeight - margin) { newPage(); }
                         doc.text(descLines, contentX, yContent);
                         yContent += doc.getTextDimensions(descLines).h + 10;
                     });
@@ -288,18 +300,19 @@ export default function Editor({ onSave }: EditorProps) {
             if (resume.education?.length) {
                 addContentSection('Education', () => {
                     resume.education.forEach(edu => {
+                         if (yContent + 30 > pageHeight - margin) { newPage(); }
                          doc.setFontSize(11);
                          doc.setFont('helvetica', 'bold');
                          doc.setTextColor(30, 41, 59);
                          doc.text(edu.degree, contentX, yContent);
                          
-                         const dateWidth = doc.getTextDimensions(edu.date).w;
                          doc.setFontSize(9);
                          doc.setFont('helvetica', 'normal');
                          doc.setTextColor(100, 116, 139);
                          doc.text(edu.date, pageWidth - margin, yContent, {align: 'right'});
                          yContent += 12;
 
+                         if (yContent > pageHeight - margin) { newPage(); }
                          doc.setFontSize(10);
                          doc.setFont('helvetica', 'normal');
                          doc.setTextColor(71, 85, 105);
