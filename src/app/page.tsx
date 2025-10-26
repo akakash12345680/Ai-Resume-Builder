@@ -12,6 +12,7 @@ const heroImage = PlaceHolderImages.find(img => img.id === 'hero-1');
 const featureImage1 = PlaceHolderImages.find(img => img.id === 'feature-1');
 const featureImage2 = PlaceHolderImages.find(img => img.id === 'feature-2');
 const featureImage3 = PlaceHolderImages.find(img => img.id === 'feature-3');
+const featureImage4 = PlaceHolderImages.find(img => img.id === 'feature-4');
 
 
 export default function Home() {
@@ -151,33 +152,43 @@ export default function Home() {
                       <Image
                         src={featureImage1.imageUrl}
                         alt={featureImage1.description}
-                        width={500}
-                        height={350}
+                        width={300}
+                        height={200}
                         data-ai-hint={featureImage1.imageHint}
-                        className="rounded-xl object-cover shadow-lg aspect-[4/3]"
+                        className="rounded-xl object-cover shadow-lg aspect-[3/2]"
                       />
                     )}
                     {featureImage3 && (
                       <Image
                         src={featureImage3.imageUrl}
                         alt={featureImage3.description}
-                        width={500}
-                        height={350}
+                        width={300}
+                        height={200}
                         data-ai-hint={featureImage3.imageHint}
-                        className="rounded-xl object-cover shadow-lg aspect-[4/3]"
+                        className="rounded-xl object-cover shadow-lg aspect-[3/2]"
                       />
                     )}
                  </div>
-                 <div className="pt-8 space-y-4">
+                 <div className="space-y-4">
                      {featureImage2 && (
                       <Image
                         src={featureImage2.imageUrl}
                         alt={featureImage2.description}
-                        width={500}
-                        height={700}
+                        width={300}
+                        height={200}
                         data-ai-hint={featureImage2.imageHint}
-                        className="rounded-xl object-cover shadow-lg aspect-[4/6]"
+                        className="rounded-xl object-cover shadow-lg aspect-[3/2]"
                       />
+                    )}
+                    {featureImage4 && (
+                        <Image
+                            src={featureImage4.imageUrl}
+                            alt={featureImage4.description}
+                            width={300}
+                            height={200}
+                            data-ai-hint={featureImage4.imageHint}
+                            className="rounded-xl object-cover shadow-lg aspect-[3/2]"
+                        />
                     )}
                  </div>
               </div>
