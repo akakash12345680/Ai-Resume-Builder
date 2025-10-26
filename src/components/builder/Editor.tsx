@@ -1,8 +1,7 @@
 "use client";
 
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,8 +19,8 @@ interface EditorProps {
 }
 
 export default function Editor({ onSave }: EditorProps) {
-  const { register, control, formState: { errors, isDirty }, setValue, watch } = useFormContext<Resume>();
-  const selectedTemplate = watch('template');
+  const { register, control, formState: { errors, isDirty }, setValue, getValues } = useFormContext<Resume>();
+  const selectedTemplate = useWatch({ control, name: 'template' });
 
   const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
     control,
@@ -38,61 +37,136 @@ export default function Editor({ onSave }: EditorProps) {
     name: "projects",
   });
 
-  const handleDownloadPdf = async () => {
-    const resumePreviewElement = document.getElementById('resume-preview-content');
-    if (!resumePreviewElement) {
-        console.error("Resume preview element not found");
-        return;
-    }
-
-    const canvas = await html2canvas(resumePreviewElement, {
-        scale: 4, // Higher scale for better quality
-        useCORS: true,
-        width: resumePreviewElement.scrollWidth,
-        height: resumePreviewElement.scrollHeight,
+  const handleDownloadPdf = () => {
+    const resume = getValues();
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'px',
+      format: 'a4',
     });
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'pt',
-        format: 'a4',
-    });
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const margin = 30;
+    let y = margin;
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    // Helper function to add text and manage y position
+    const addText = (text: string | string[], options: any, startY?: number) => {
+        if (startY) y = startY;
+        const textLines = doc.splitTextToSize(text, pageWidth - margin * 2);
+        const textHeight = doc.getTextDimensions(textLines).h;
 
-    // Maintain aspect ratio
-    const ratio = canvasWidth / canvasHeight;
-    let imgWidth = pdfWidth;
-    let imgHeight = imgWidth / ratio;
+        if (y + textHeight > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+
+        doc.text(textLines, margin, y, options);
+        y += textHeight + (options.lineHeightFactor || 1.15) * doc.getFontSize() / 2; // Add some padding after text
+    };
     
-    // If the image is taller than the page, scale it down to fit the height and adjust width accordingly
-    if (imgHeight > pdfHeight) {
-        imgHeight = pdfHeight;
-        imgWidth = imgHeight * ratio;
+    // --- Header ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(28);
+    doc.text(resume.name, pageWidth / 2, y, { align: 'center' });
+    y += doc.getTextDimensions(resume.name).h;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const contactInfo = [resume.email, resume.phone, resume.linkedin].filter(Boolean).join(' | ');
+    doc.text(contactInfo, pageWidth / 2, y, { align: 'center' });
+    y += 20;
+    
+    // Add a line separator
+    doc.setDrawColor(200); // Light gray
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 20;
+
+    // --- Sections ---
+    const addSection = (title: string, content: () => void) => {
+      if (y > pageHeight - margin - 50) { // Check if there's enough space for a new section
+        doc.addPage();
+        y = margin;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(title.toUpperCase(), margin, y);
+      y += 5;
+      doc.setDrawColor(150);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 15;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      content();
+      y += 15; // Space after section
+    };
+    
+    // Summary
+    if (resume.summary) {
+        addSection('Summary', () => {
+            addText(resume.summary, {});
+        });
     }
 
-    let heightLeft = canvasHeight * (pdfWidth / canvasWidth); // Total height of the image in PDF units
-    let position = 0;
-    const imgDataAsPng = canvas.toDataURL('image/png');
-
-    // Create a new PDF and add the image
-    pdf.addImage(imgDataAsPng, 'PNG', 0, position, pdfWidth, heightLeft);
-    heightLeft -= pdfHeight;
-
-    // If content is longer than one page, add new pages
-    while (heightLeft > 0) {
-        position = heightLeft - (canvasHeight * (pdfWidth / canvasWidth));
-        pdf.addPage();
-        pdf.addImage(imgDataAsPng, 'PNG', 0, position, pdfWidth, canvasHeight * (pdfWidth / canvasWidth));
-        heightLeft -= pdfHeight;
+    // Skills
+    if (resume.skills) {
+        addSection('Skills', () => {
+            addText(resume.skills.split(',').map(s => s.trim()).join(', '), {});
+        });
+    }
+    
+    // Experience
+    if (resume.experience?.length > 0) {
+        addSection('Experience', () => {
+            resume.experience.forEach((exp, index) => {
+                if (index > 0) y += 10;
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                addText(`${exp.role}`, {});
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'italic');
+                addText(`${exp.company} | ${exp.date}`, {});
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                const descriptionPoints = exp.description.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*')).map(line => line.trim());
+                descriptionPoints.forEach(point => {
+                  addText(`\u2022 ${point.substring(1).trim()}`, {});
+                });
+            });
+        });
     }
 
-    pdf.save("resume.pdf");
+    // Projects
+    if (resume.projects?.length > 0) {
+        addSection('Projects', () => {
+            resume.projects.forEach((proj, index) => {
+                if (index > 0) y += 10;
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                addText(proj.name, {});
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                addText(proj.description, {});
+            });
+        });
+    }
+
+    // Education
+    if (resume.education?.length > 0) {
+        addSection('Education', () => {
+            resume.education.forEach((edu) => {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                addText(edu.degree, {});
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                addText(`${edu.university} | ${edu.date}`, {});
+                 y+=5;
+            });
+        });
+    }
+
+    doc.save(`${resume.name.replace(/\s/g, '_')}_Resume.pdf`);
   };
   
   return (
@@ -116,7 +190,7 @@ export default function Editor({ onSave }: EditorProps) {
                 onValueChange={(value) => setValue('template', value, { shouldDirty: true })}
             >
                 <SelectTrigger id="template-select" className="w-full">
-                    <Palette />
+                    <Palette className="mr-2"/>
                     <SelectValue placeholder="Select a template" />
                 </SelectTrigger>
                 <SelectContent>
@@ -129,7 +203,7 @@ export default function Editor({ onSave }: EditorProps) {
           <div className="flex flex-1 items-end gap-2 min-w-[200px]">
             <AtsAnalyzer />
             <Button onClick={handleDownloadPdf} variant="outline" className="w-full">
-                <FileDown />
+                <FileDown className="mr-2" />
                 Download PDF
             </Button>
           </div>
@@ -193,7 +267,7 @@ export default function Editor({ onSave }: EditorProps) {
                 <div className="flex items-center">
                     <GripVertical className="h-5 w-5 text-muted-foreground mr-2 cursor-grab"/>
                     <AccordionTrigger className="flex-1 font-headline text-lg py-0">
-                        {watch(`experience.${index}.role`) || `Experience #${index + 1}`}
+                        {useWatch({ control, name: `experience.${index}.role`}) || `Experience #${index + 1}`}
                     </AccordionTrigger>
                     <Button variant="ghost" size="icon" onClick={() => removeExperience(index)} className="ml-2 text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
