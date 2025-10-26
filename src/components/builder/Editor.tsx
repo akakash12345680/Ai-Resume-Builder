@@ -1,6 +1,8 @@
 "use client";
 
 import { useFormContext, useFieldArray, watch } from 'react-hook-form';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,8 +35,34 @@ export default function Editor({ onSave }: EditorProps) {
     name: "projects",
   });
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPdf = async () => {
+    const resumePreviewElement = document.getElementById('resume-preview-content');
+    if (!resumePreviewElement) {
+        console.error("Resume preview element not found");
+        return;
+    }
+    
+    const canvas = await html2canvas(resumePreviewElement, {
+        scale: 2, // Increase scale for better quality
+    });
+
+    const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'px',
+        format: 'a4',
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // Scale canvas to fit PDF width
+    const ratio = pdfWidth / canvasWidth;
+    const scaledHeight = canvasHeight * ratio;
+
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, scaledHeight);
+    pdf.save("resume.pdf");
   };
   
   return (
@@ -52,7 +80,7 @@ export default function Editor({ onSave }: EditorProps) {
 
        <div className="flex gap-2">
           <AtsAnalyzer />
-          <Button onClick={handlePrint} variant="outline">Download PDF</Button>
+          <Button onClick={handleDownloadPdf} variant="outline">Download PDF</Button>
       </div>
       
       <Separator />

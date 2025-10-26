@@ -45,16 +45,10 @@ const generateResumeFromPromptFlow = ai.defineFlow(
     outputSchema: GenerateResumeFromPromptOutputSchema,
   },
   async input => {
-    try {
-      const {output} = await prompt(input);
-      if (!output) {
-        throw new Error('Failed to generate resume from prompt. AI model did not return an output.');
-      }
-      return output;
-    } catch (error) {
-      console.error('Error in generateResumeFromPromptFlow:', error);
-      // Re-throw the original error for more detailed debugging
-      throw error;
+    const {output} = await prompt(input);
+    if (!output) {
+      throw new Error('Failed to generate resume from prompt. AI model did not return an output.');
     }
+    return output;
   }
 );
