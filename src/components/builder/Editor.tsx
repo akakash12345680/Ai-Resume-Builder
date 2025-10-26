@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray, watch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +16,7 @@ interface EditorProps {
 }
 
 export default function Editor({ onSave }: EditorProps) {
-  const { register, control, formState: { errors, isDirty } } = useFormContext<Resume>();
+  const { register, control, formState: { errors, isDirty }, watch } = useFormContext<Resume>();
 
   const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
     control,
@@ -209,10 +209,4 @@ export default function Editor({ onSave }: EditorProps) {
       </section>
     </div>
   );
-}
-
-// Helper to access form values for trigger title
-function watch(name: string) {
-    const { watch } = useFormContext();
-    return watch(name);
 }
