@@ -45,35 +45,51 @@ export default function Editor({ onSave }: EditorProps) {
         return;
     }
     
+    // A4 dimensions in points: 595.28 x 841.89
+    const a4Width = 595.28;
+    const a4Height = 841.89;
+
     const canvas = await html2canvas(resumePreviewElement, {
-        scale: 4, 
+        scale: 2, // Use a reasonable scale for good quality without huge file size
         useCORS: true,
-        // Set width and height to match the element's scroll dimensions to capture full content
         width: resumePreviewElement.scrollWidth,
         height: resumePreviewElement.scrollHeight,
     });
 
-    const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'pt', // Use points for standard PDF sizing
-        format: 'a4',
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     
-    // Maintain aspect ratio
-    const ratio = Math.min(pdfWidth / canvasWidth, pdfHeight / canvasHeight);
-    const imgWidth = canvasWidth * ratio;
-    const imgHeight = canvasHeight * ratio;
-    
-    // Center the image on the page (optional)
-    const x = (pdfWidth - imgWidth) / 2;
-    const y = 0; // Align to top
+    const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'pt',
+        format: 'a4',
+    });
 
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWidth, imgHeight);
+    // Calculate aspect ratios
+    const canvasRatio = canvasWidth / canvasHeight;
+    const a4Ratio = a4Width / a4Height;
+
+    let finalWidth, finalHeight;
+
+    // Fit content to page width
+    finalWidth = a4Width;
+    finalHeight = a4Width / canvasRatio;
+
+    // If the content is too tall, it will create multiple pages
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    let heightLeft = finalHeight;
+    let position = 0;
+
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, finalWidth, finalHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - finalHeight;
+      pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, finalWidth, finalHeight);
+      heightLeft -= pageHeight;
+    }
+    
     pdf.save("resume.pdf");
   };
   
