@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { generateResumeFromPrompt } from '@/ai/flows/generate-resume-from-prompt';
-import { parseResumeText } from '@/lib/resume-parser';
 import type { Resume } from '@/lib/types';
 import Editor from './Editor';
 import Preview from './Preview';
@@ -111,8 +110,8 @@ export function ResumeBuilder() {
 
     setStep('generating');
     try {
-      const { resume: generatedResumeText } = await generateResumeFromPrompt({ prompt });
-      const parsedResume = parseResumeText(generatedResumeText);
+      // The AI flow now returns a structured JSON object
+      const parsedResume = await generateResumeFromPrompt({ prompt });
       
       const fullResumeData: Resume & { createdAt: any, updatedAt: any, userId: string, title: string } = {
         ...defaultResume,
@@ -211,5 +210,3 @@ export function ResumeBuilder() {
     </FormProvider>
   );
 }
-
-    
