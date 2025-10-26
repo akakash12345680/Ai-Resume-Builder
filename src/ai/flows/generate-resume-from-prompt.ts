@@ -53,8 +53,8 @@ const generateResumeFromPromptFlow = ai.defineFlow(
       return output;
     } catch (error) {
       console.error('Error in generateResumeFromPromptFlow:', error);
-      // Re-throw a more generic error to the client
-      throw new Error('An error occurred while generating the resume. Please try again.');
+      // Re-throw the original error for more detailed debugging
+      throw error;
     }
   }
 );
