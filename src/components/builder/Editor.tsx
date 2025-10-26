@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { Trash2, PlusCircle, GripVertical, Save, FileDown, Palette } from 'lucid
 import type { Resume } from '@/lib/types';
 import AtsAnalyzer from './AtsAnalyzer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useWatch } from 'react-hook-form';
+import ExperienceItem from './ExperienceItem';
 
 
 interface EditorProps {
@@ -53,6 +55,7 @@ export default function Editor({ onSave }: EditorProps) {
     // Helper function to add text and manage y position
     const addText = (text: string | string[], options: any, startY?: number) => {
         if (startY) y = startY;
+        doc.setFontSize(options.fontSize || 11);
         const textLines = doc.splitTextToSize(text, pageWidth - margin * 2);
         const textHeight = doc.getTextDimensions(textLines).h;
 
@@ -67,15 +70,13 @@ export default function Editor({ onSave }: EditorProps) {
     
     // --- Header ---
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(28);
-    doc.text(resume.name, pageWidth / 2, y, { align: 'center' });
-    y += doc.getTextDimensions(resume.name).h;
-
+    addText(resume.name, { align: 'center', fontSize: 28, lineHeightFactor: 1 }, pageWidth / 2);
+    y -= 10;
+    
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
     const contactInfo = [resume.email, resume.phone, resume.linkedin].filter(Boolean).join(' | ');
-    doc.text(contactInfo, pageWidth / 2, y, { align: 'center' });
-    y += 20;
+    addText(contactInfo, { align: 'center', fontSize: 10, lineHeightFactor: 1 }, pageWidth/2);
+    y += 10;
     
     // Add a line separator
     doc.setDrawColor(200); // Light gray
@@ -89,14 +90,12 @@ export default function Editor({ onSave }: EditorProps) {
         y = margin;
       }
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(title.toUpperCase(), margin, y);
-      y += 5;
+      addText(title.toUpperCase(), { fontSize: 12, lineHeightFactor: 1.2 });
+      y -= 5;
       doc.setDrawColor(150);
       doc.line(margin, y, pageWidth - margin, y);
       y += 15;
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
       content();
       y += 15; // Space after section
     };
@@ -104,14 +103,14 @@ export default function Editor({ onSave }: EditorProps) {
     // Summary
     if (resume.summary) {
         addSection('Summary', () => {
-            addText(resume.summary, {});
+            addText(resume.summary, { fontSize: 10 });
         });
     }
 
     // Skills
     if (resume.skills) {
         addSection('Skills', () => {
-            addText(resume.skills.split(',').map(s => s.trim()).join(', '), {});
+            addText(resume.skills.split(',').map(s => s.trim()).join(', '), { fontSize: 10 });
         });
     }
     
@@ -120,17 +119,14 @@ export default function Editor({ onSave }: EditorProps) {
         addSection('Experience', () => {
             resume.experience.forEach((exp, index) => {
                 if (index > 0) y += 10;
-                doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
-                addText(`${exp.role}`, {});
-                doc.setFontSize(10);
+                addText(`${exp.role}`, { fontSize: 11 });
                 doc.setFont('helvetica', 'italic');
-                addText(`${exp.company} | ${exp.date}`, {});
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
+                addText(`${exp.company} | ${exp.date}`, { fontSize: 10 });
+                doc.setFont('helvetical', 'normal');
                 const descriptionPoints = exp.description.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*')).map(line => line.trim());
                 descriptionPoints.forEach(point => {
-                  addText(`\u2022 ${point.substring(1).trim()}`, {});
+                  addText(`\u2022 ${point.substring(1).trim()}`, { fontSize: 10 });
                 });
             });
         });
@@ -141,12 +137,10 @@ export default function Editor({ onSave }: EditorProps) {
         addSection('Projects', () => {
             resume.projects.forEach((proj, index) => {
                 if (index > 0) y += 10;
-                doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
-                addText(proj.name, {});
-                doc.setFontSize(10);
+                addText(proj.name, { fontSize: 11 });
                 doc.setFont('helvetica', 'normal');
-                addText(proj.description, {});
+                addText(proj.description, { fontSize: 10 });
             });
         });
     }
@@ -155,12 +149,10 @@ export default function Editor({ onSave }: EditorProps) {
     if (resume.education?.length > 0) {
         addSection('Education', () => {
             resume.education.forEach((edu) => {
-                doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
-                addText(edu.degree, {});
-                doc.setFontSize(10);
+                addText(edu.degree, { fontSize: 11 });
                 doc.setFont('helvetica', 'normal');
-                addText(`${edu.university} | ${edu.date}`, {});
+                addText(`${edu.university} | ${edu.date}`, { fontSize: 10 });
                  y+=5;
             });
         });
@@ -263,37 +255,14 @@ export default function Editor({ onSave }: EditorProps) {
         </div>
         <Accordion type="multiple" className="space-y-4">
           {experienceFields.map((field, index) => (
-            <AccordionItem key={field.id} value={field.id} className="border rounded-lg bg-background p-4 shadow-sm">
-                <div className="flex items-center">
-                    <GripVertical className="h-5 w-5 text-muted-foreground mr-2 cursor-grab"/>
-                    <AccordionTrigger className="flex-1 font-headline text-lg py-0">
-                        {useWatch({ control, name: `experience.${index}.role`}) || `Experience #${index + 1}`}
-                    </AccordionTrigger>
-                    <Button variant="ghost" size="icon" onClick={() => removeExperience(index)} className="ml-2 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-              <AccordionContent className="pt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Role</Label>
-                    <Input {...register(`experience.${index}.role`)} />
-                  </div>
-                  <div>
-                    <Label>Company</Label>
-                    <Input {...register(`experience.${index}.company`)} />
-                  </div>
-                </div>
-                <div>
-                  <Label>Date</Label>
-                  <Input {...register(`experience.${index}.date`)} placeholder="e.g., Jan 2020 - Present"/>
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Textarea {...register(`experience.${index}.description`)} className="min-h-[120px]" placeholder="Start each point with a hyphen (-)" />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+            <ExperienceItem
+              key={field.id}
+              index={index}
+              field={field}
+              onRemove={() => removeExperience(index)}
+              control={control}
+              register={register}
+            />
           ))}
         </Accordion>
       </section>
