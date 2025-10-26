@@ -10,7 +10,6 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const heroImage = PlaceHolderImages.find(img => img.id === 'hero-1');
 const featureImage1 = PlaceHolderImages.find(img => img.id === 'feature-1');
-const featureImage2 = PlaceHolderImages.find(img => img.id === 'feature-2');
 const featureImage3 = PlaceHolderImages.find(img => img.id === 'feature-3');
 const featureImage4 = PlaceHolderImages.find(img => img.id === 'feature-4');
 
@@ -169,17 +168,7 @@ export default function Home() {
                       />
                     )}
                  </div>
-                 <div className="space-y-4">
-                     {featureImage2 && (
-                      <Image
-                        src={featureImage2.imageUrl}
-                        alt={featureImage2.description}
-                        width={300}
-                        height={200}
-                        data-ai-hint={featureImage2.imageHint}
-                        className="rounded-xl object-cover shadow-lg aspect-[3/2]"
-                      />
-                    )}
+                 <div className="space-y-4 pt-8">
                     {featureImage4 && (
                         <Image
                             src={featureImage4.imageUrl}
