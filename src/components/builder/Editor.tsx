@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormContext, useFieldArray, watch } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Button } from '@/components/ui/button';
@@ -9,16 +9,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Trash2, PlusCircle, GripVertical, Save } from 'lucide-react';
+import { Trash2, PlusCircle, GripVertical, Save, FileDown, Palette } from 'lucide-react';
 import type { Resume } from '@/lib/types';
 import AtsAnalyzer from './AtsAnalyzer';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 
 interface EditorProps {
     onSave: () => void;
 }
 
 export default function Editor({ onSave }: EditorProps) {
-  const { register, control, formState: { errors, isDirty }, watch } = useFormContext<Resume>();
+  const { register, control, formState: { errors, isDirty }, setValue, watch } = useFormContext<Resume>();
+  const selectedTemplate = watch('template');
 
   const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
     control,
@@ -42,18 +45,21 @@ export default function Editor({ onSave }: EditorProps) {
         return;
     }
     
+    // The library renders the canvas at a resolution of 96 dpi.
+    // We can scale it up to improve the quality of the PDF.
     const canvas = await html2canvas(resumePreviewElement, {
-        scale: 2, // Increase scale for better quality
+        scale: 4, // Increase scale for much better quality
+        useCORS: true, 
     });
 
     const pdf = new jsPDF({
         orientation: 'p',
         unit: 'px',
         format: 'a4',
+        hotfixes: ['px_scaling'], // crucial for correct scaling
     });
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     
@@ -78,9 +84,31 @@ export default function Editor({ onSave }: EditorProps) {
         </Button>
       </div>
 
-       <div className="flex gap-2">
-          <AtsAnalyzer />
-          <Button onClick={handleDownloadPdf} variant="outline">Download PDF</Button>
+       <div className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <Label htmlFor="template-select" className="mb-2 block">Template</Label>
+             <Select
+                value={selectedTemplate}
+                onValueChange={(value) => setValue('template', value, { shouldDirty: true })}
+            >
+                <SelectTrigger id="template-select" className="w-full">
+                    <Palette />
+                    <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="modern">Modern</SelectItem>
+                    <SelectItem value="classic">Classic</SelectItem>
+                    <SelectItem value="creative">Creative</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-1 items-end gap-2 min-w-[200px]">
+            <AtsAnalyzer />
+            <Button onClick={handleDownloadPdf} variant="outline" className="w-full">
+                <FileDown />
+                Download PDF
+            </Button>
+          </div>
       </div>
       
       <Separator />
@@ -238,3 +266,5 @@ export default function Editor({ onSave }: EditorProps) {
     </div>
   );
 }
+
+    

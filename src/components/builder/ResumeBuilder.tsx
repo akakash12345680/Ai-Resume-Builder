@@ -22,6 +22,7 @@ import Preview from './Preview';
 
 const resumeSchema = z.object({
   id: z.string().optional(),
+  template: z.string().optional(),
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
@@ -50,6 +51,7 @@ const resumeSchema = z.object({
 
 
 const defaultResume: Resume = {
+  template: "modern",
   name: "Your Name",
   email: "youremail@example.com",
   phone: "123-456-7890",
@@ -209,3 +211,5 @@ export function ResumeBuilder() {
     </FormProvider>
   );
 }
+
+    

@@ -25,6 +25,7 @@ export type Resume = {
   id?: string;
   title?: string;
   userId?: string;
+  template?: string;
   name: string;
   email: string;
   phone: string;
@@ -37,3 +38,5 @@ export type Resume = {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
+
+    
