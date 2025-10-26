@@ -44,52 +44,54 @@ export default function Editor({ onSave }: EditorProps) {
         console.error("Resume preview element not found");
         return;
     }
-    
-    // A4 dimensions in points: 595.28 x 841.89
-    const a4Width = 595.28;
-    const a4Height = 841.89;
 
     const canvas = await html2canvas(resumePreviewElement, {
-        scale: 2, // Use a reasonable scale for good quality without huge file size
+        scale: 4, // Higher scale for better quality
         useCORS: true,
         width: resumePreviewElement.scrollWidth,
         height: resumePreviewElement.scrollHeight,
     });
 
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    
+    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
-        orientation: 'p',
+        orientation: 'portrait',
         unit: 'pt',
         format: 'a4',
     });
 
-    // Calculate aspect ratios
-    const canvasRatio = canvasWidth / canvasHeight;
-    const a4Ratio = a4Width / a4Height;
-
-    let finalWidth, finalHeight;
-
-    // Fit content to page width
-    finalWidth = a4Width;
-    finalHeight = a4Width / canvasRatio;
-
-    // If the content is too tall, it will create multiple pages
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    let heightLeft = finalHeight;
-    let position = 0;
-
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, finalWidth, finalHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - finalHeight;
-      pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, finalWidth, finalHeight);
-      heightLeft -= pageHeight;
-    }
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
     
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    // Maintain aspect ratio
+    const ratio = canvasWidth / canvasHeight;
+    let imgWidth = pdfWidth;
+    let imgHeight = imgWidth / ratio;
+    
+    // If the image is taller than the page, scale it down to fit the height and adjust width accordingly
+    if (imgHeight > pdfHeight) {
+        imgHeight = pdfHeight;
+        imgWidth = imgHeight * ratio;
+    }
+
+    let heightLeft = canvasHeight * (pdfWidth / canvasWidth); // Total height of the image in PDF units
+    let position = 0;
+    const imgDataAsPng = canvas.toDataURL('image/png');
+
+    // Create a new PDF and add the image
+    pdf.addImage(imgDataAsPng, 'PNG', 0, position, pdfWidth, heightLeft);
+    heightLeft -= pdfHeight;
+
+    // If content is longer than one page, add new pages
+    while (heightLeft > 0) {
+        position = heightLeft - (canvasHeight * (pdfWidth / canvasWidth));
+        pdf.addPage();
+        pdf.addImage(imgDataAsPng, 'PNG', 0, position, pdfWidth, canvasHeight * (pdfWidth / canvasWidth));
+        heightLeft -= pdfHeight;
+    }
+
     pdf.save("resume.pdf");
   };
   
